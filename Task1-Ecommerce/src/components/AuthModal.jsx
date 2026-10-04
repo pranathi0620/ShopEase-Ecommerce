@@ -54,11 +54,7 @@ function AuthModal({
 
     setIsLoading(true);
 
-    try {
-      const endpoint = isRegister
-        ? "http://localhost:5000/api/auth/register"
-        : "http://localhost:5000/api/auth/login";
-
+    
       const requestBody = isRegister
         ? {
             name: name.trim(),
@@ -108,6 +104,14 @@ function AuthModal({
       setShowPassword(false);
 
       onClose();
+try {
+  const API_URL =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5000";
+
+  const endpoint = isRegister
+    ? `${API_URL}/api/auth/register`
+    : `${API_URL}/api/auth/login`;
 
     } catch (error) {
       console.error("Authentication error:", error);
