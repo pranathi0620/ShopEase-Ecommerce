@@ -11,7 +11,6 @@ const User = require("./models/User");
 require("dotenv").config();
 
 const app = express();
-
 const PORT = process.env.PORT || 5000;
 
 // ========================================
@@ -20,7 +19,10 @@ const PORT = process.env.PORT || 5000;
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-if (!stripeSecretKey || !stripeSecretKey.startsWith("sk_test_")) {
+if (
+  !stripeSecretKey ||
+  !stripeSecretKey.startsWith("sk_test_")
+) {
   throw new Error(
     "ShopEase safety check failed: A Stripe TEST mode key is required."
   );
@@ -29,11 +31,22 @@ if (!stripeSecretKey || !stripeSecretKey.startsWith("sk_test_")) {
 const stripeClient = stripe(stripeSecretKey);
 
 // ========================================
+// FRONTEND URL CONFIGURATION
+// ========================================
+
+// Render environment variable: FRONTEND_URL
+// Local development uses the Vite frontend URL.
+
+const FRONTEND_URL = (
+  process.env.FRONTEND_URL ||
+  "http://localhost:5173"
+).replace(/\/+$/, "");
+
+// ========================================
 // MIDDLEWARE
 // ========================================
 
 app.use(cors());
-
 app.use(express.json());
 
 // ========================================
@@ -74,37 +87,33 @@ app.post("/api/auth/register", async (req, res) => {
 
     if (!name || !email || !password) {
       return res.status(400).json({
-        message:
-          "Please provide name, email and password.",
+        message: "Please provide name, email and password.",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
-        message:
-          "Password must contain at least 6 characters.",
+        message: "Password must contain at least 6 characters.",
       });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const existingUser = await User.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (existingUser) {
       return res.status(400).json({
-        message:
-          "An account with this email already exists.",
+        message: "An account with this email already exists.",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
-    );
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword,
     });
 
@@ -121,8 +130,7 @@ app.post("/api/auth/register", async (req, res) => {
     console.error(error.message);
 
     res.status(500).json({
-      message:
-        "Server error while creating account.",
+      message: "Server error while creating account.",
     });
   }
 });
@@ -137,13 +145,14 @@ app.post("/api/auth/login", async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({
-        message:
-          "Please provide email and password.",
+        message: "Please provide email and password.",
       });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const user = await User.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (!user) {
@@ -204,7 +213,6 @@ app.post(
       const { cartItems } = req.body;
 
       if (
-        !cartItems ||
         !Array.isArray(cartItems) ||
         cartItems.length === 0
       ) {
@@ -217,22 +225,22 @@ app.post(
         const price = Number(item.price);
         const quantity = Number(item.quantity);
 
-        if (
-          !Number.isFinite(price) ||
-          price <= 0
-        ) {
-          throw new Error(
-            "Invalid product price."
-          );
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error("Invalid product price.");
         }
 
         if (
           !Number.isInteger(quantity) ||
           quantity <= 0
         ) {
-          throw new Error(
-            "Invalid product quantity."
-          );
+          throw new Error("Invalid product quantity.");
+        }
+
+        if (
+          typeof item.name !== "string" ||
+          !item.name.trim()
+        ) {
+          throw new Error("Invalid product name.");
         }
 
         return {
@@ -241,38 +249,33 @@ app.post(
             product_data: {
               name: item.name,
             },
-            unit_amount: Math.round(
-              price * 100
-            ),
+            unit_amount: Math.round(price * 100),
           },
           quantity,
         };
       });
 
       const session =
-        await stripeClient.checkout.sessions.create(
-          {
+        await stripeClient.checkout.sessions.create({
+          line_items: lineItems,
+          mode: "payment",
 
-            line_items: lineItems,
+          // Return to the deployed frontend after
+          // a successful Stripe test checkout.
+          success_url:
+            `${FRONTEND_URL}/payment-success`,
 
-            mode: "payment",
-
-            success_url:
-              "http://localhost:5173/payment-success",
-
-            cancel_url:
-              "http://localhost:5173/payment-cancelled",
-
-          }
-        );
+          // Return to the deployed frontend if
+          // the customer cancels checkout.
+          cancel_url:
+            `${FRONTEND_URL}/payment-cancelled`,
+        });
 
       res.json({
         url: session.url,
       });
     } catch (error) {
-      console.error(
-        "Stripe checkout error:"
-      );
+      console.error("Stripe checkout error:");
       console.error(error.message);
 
       res.status(500).json({
@@ -289,6 +292,10 @@ app.post(
 
 app.listen(PORT, () => {
   console.log(
-    `ShopEase Backend Server running on http://localhost:${PORT}`
+    `ShopEase Backend Server running on port ${PORT}`
+  );
+
+  console.log(
+    `Frontend URL configured as: ${FRONTEND_URL}`
   );
 });
