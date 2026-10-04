@@ -15,12 +15,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ========================================
-// STRIPE
+// STRIPE - TEST MODE ONLY
 // ========================================
 
-const stripeClient = stripe(
-  process.env.STRIPE_SECRET_KEY
-);
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+if (!stripeSecretKey || !stripeSecretKey.startsWith("sk_test_")) {
+  throw new Error(
+    "ShopEase safety check failed: A Stripe TEST mode key is required."
+  );
+}
+
+const stripeClient = stripe(stripeSecretKey);
 
 // ========================================
 // MIDDLEWARE
