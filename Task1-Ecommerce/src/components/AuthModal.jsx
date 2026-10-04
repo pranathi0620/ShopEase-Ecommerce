@@ -5,23 +5,12 @@ function AuthModal({
   onClose,
   onLogin,
 }) {
-  const [isRegister, setIsRegister] =
-    useState(false);
-
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [name, setName] =
-    useState("");
-
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [isRegister, setIsRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) {
     return null;
@@ -30,6 +19,7 @@ function AuthModal({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Validate the form
     if (isRegister && name.trim() === "") {
       alert("Please enter your name.");
       return;
@@ -54,7 +44,18 @@ function AuthModal({
 
     setIsLoading(true);
 
-    
+    try {
+      // Backend URL
+      const API_URL =
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:5000";
+
+      // Select registration or login endpoint
+      const endpoint = isRegister
+        ? `${API_URL}/api/auth/register`
+        : `${API_URL}/api/auth/login`;
+
+      // Prepare request data
       const requestBody = isRegister
         ? {
             name: name.trim(),
@@ -66,6 +67,7 @@ function AuthModal({
             password,
           };
 
+      // Send request to backend
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -74,13 +76,18 @@ function AuthModal({
         body: JSON.stringify(requestBody),
       });
 
+      // Read server response safely
       const data = await response.json();
 
+      // Handle server errors
       if (!response.ok) {
-        alert(data.message || "Something went wrong.");
+        alert(
+          data.message || "Something went wrong."
+        );
         return;
       }
 
+      // Save authentication token if provided
       if (data.token) {
         localStorage.setItem(
           "shopeaseToken",
@@ -88,15 +95,23 @@ function AuthModal({
         );
       }
 
+      // Save user information
       localStorage.setItem(
         "shopeaseUser",
         JSON.stringify(data.user)
       );
 
-      alert(data.message);
+      alert(
+        data.message ||
+          (isRegister
+            ? "Account created successfully!"
+            : "Login successful!")
+      );
 
+      // Update the application login state
       onLogin(data.user.name);
 
+      // Reset form fields
       setName("");
       setEmail("");
       setPassword("");
@@ -104,20 +119,11 @@ function AuthModal({
       setShowPassword(false);
 
       onClose();
-try {
-  const API_URL =
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:5000";
-
-  const endpoint = isRegister
-    ? `${API_URL}/api/auth/register`
-    : `${API_URL}/api/auth/login`;
-
     } catch (error) {
       console.error("Authentication error:", error);
 
       alert(
-        "Unable to connect to the server. Please make sure the backend is running."
+        "Unable to connect to the server. Please try again. The server may be starting up or temporarily unavailable."
       );
     } finally {
       setIsLoading(false);
@@ -135,19 +141,17 @@ try {
 
   return (
     <div className="auth-overlay">
-
       <div className="auth-modal">
-
         <button
           className="auth-close-btn"
           onClick={onClose}
           aria-label="Close authentication window"
+          type="button"
         >
           ×
         </button>
 
         <div className="auth-header">
-
           <div className="auth-logo">
             ShopEase
           </div>
@@ -163,17 +167,14 @@ try {
               ? "Create your ShopEase account"
               : "Login to continue shopping"}
           </p>
-
         </div>
 
         <form
           className="auth-form"
           onSubmit={handleSubmit}
         >
-
           {isRegister && (
             <div className="auth-field">
-
               <label htmlFor="name">
                 Full Name
               </label>
@@ -186,13 +187,13 @@ try {
                 onChange={(event) =>
                   setName(event.target.value)
                 }
+                autoComplete="name"
+                required
               />
-
             </div>
           )}
 
           <div className="auth-field">
-
             <label htmlFor="email">
               Email Address
             </label>
@@ -205,18 +206,17 @@ try {
               onChange={(event) =>
                 setEmail(event.target.value)
               }
+              autoComplete="email"
+              required
             />
-
           </div>
 
           <div className="auth-field">
-
             <label htmlFor="password">
               Password
             </label>
 
             <div className="password-wrapper">
-
               <input
                 id="password"
                 type={
@@ -227,28 +227,27 @@ try {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(event) =>
-                  setPassword(
-                    event.target.value
-                  )
+                  setPassword(event.target.value)
                 }
+                autoComplete={
+                  isRegister
+                    ? "new-password"
+                    : "current-password"
+                }
+                minLength={6}
+                required
               />
 
               <button
                 type="button"
                 className="show-password-btn"
                 onClick={() =>
-                  setShowPassword(
-                    !showPassword
-                  )
+                  setShowPassword(!showPassword)
                 }
               >
-                {showPassword
-                  ? "Hide"
-                  : "Show"}
+                {showPassword ? "Hide" : "Show"}
               </button>
-
             </div>
-
           </div>
 
           <button
@@ -262,11 +261,9 @@ try {
               ? "Create Account"
               : "Login"}
           </button>
-
         </form>
 
         <div className="auth-switch">
-
           <p>
             {isRegister
               ? "Already have an account?"
@@ -282,11 +279,8 @@ try {
               ? "Login"
               : "Create Account"}
           </button>
-
         </div>
-
       </div>
-
     </div>
   );
 }
